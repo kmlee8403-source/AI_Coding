@@ -7,7 +7,7 @@ dist = DistanceSensor('B')
 while True:
     distance = dist.get_distance()
     
-    if distance < 10:
+    if distance < 100:
         motor.stop()
         print("물체가 가까워서 멈춤!")
     else:
