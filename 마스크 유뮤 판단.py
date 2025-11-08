@@ -23,6 +23,10 @@ motorB = Motor('B')  # 반대방향 모터
 force = ForceSensor('C')
 dist_sensor = DistanceSensor('D')
 
+# 엔코더 초기 위치 설정 (부팅 시 기준점 0도)
+motorA.run_to_position(0, 50)
+motorB.run_to_position(0, 50)
+
 interpreter = make_interpreter(MODEL_PATH)
 interpreter.allocate_tensors()
 
@@ -44,26 +48,30 @@ current_angle = MOTOR_HOME_ANGLE
 motor_lock = threading.Lock()  # 모터 동시 명령 방지용 Lock
 
 # =========================
-# 모터 제어 함수
+# 모터 제어 함수 (절대 위치 기반)
 # =========================
 def move_motor_to(target_angle, speed=20):
-    """모터 두 개를 순차적으로 반대 방향으로 각도 회전"""
+    """모터 절대 위치 기반 이동"""
     global current_angle
     try:
-        diff = target_angle - current_angle
-        if abs(diff) <= ANGLE_TOLERANCE:
-            return  # 너무 작으면 무시
+        current_angle_A = motorA.get_aposition()
+        current_angle_B = motorB.get_aposition()
+
+        diff_A = target_angle - current_angle_A
+        diff_B = -target_angle - current_angle_B  # 반대 방향
+
+        if abs(diff_A) <= ANGLE_TOLERANCE and abs(diff_B) <= ANGLE_TOLERANCE:
+            return
 
         with motor_lock:
-            motorA.run_for_degrees(diff, speed)
+            motorA.run_to_position(target_angle, speed)
             time.sleep(0.3)
-            motorB.run_for_degrees(-diff, speed)
+            motorB.run_to_position(-target_angle, speed)
             current_angle = target_angle
 
-        # 상태 출력
-        if current_angle == MOTOR_HOME_ANGLE:
+        if abs(current_angle - MOTOR_HOME_ANGLE) <= ANGLE_TOLERANCE:
             print("문 닫힘 (0도)")
-        elif current_angle == MOTOR_OPEN_ANGLE:
+        elif abs(current_angle - MOTOR_OPEN_ANGLE) <= ANGLE_TOLERANCE:
             print("문 열림 (90도)")
 
     except Exception as e:
@@ -71,12 +79,26 @@ def move_motor_to(target_angle, speed=20):
         traceback.print_exc()
 
 def motor_correction():
-    """각도 보정: 간단히 동일 위치로 다시 한 번 이동"""
+    """모터 절대 위치 보정"""
     try:
         with motor_lock:
-            motorA.run_for_degrees(0, 15)
-            time.sleep(0.3)
-            motorB.run_for_degrees(0, 15)
+            posA_before = motorA.get_aposition()
+            posB_before = motorB.get_aposition()
+
+            # 오차가 있으면 보정
+            if abs(posA_before - current_angle) > ANGLE_TOLERANCE:
+                motorA.run_to_position(current_angle, 20)
+            if abs(posB_before + current_angle) > ANGLE_TOLERANCE:
+                motorB.run_to_position(-current_angle, 20)
+
+            # 보정 후 다시 읽기
+            time.sleep(0.5)
+            posA_after = motorA.get_aposition()
+            posB_after = motorB.get_aposition()
+
+            print(f"보정 완료 (A:{posA_before:.1f}° → {posA_after:.1f}°, "
+                  f"B:{posB_before:.1f}° → {posB_after:.1f}°)")
+
     except Exception as e:
         print(f"[보정 오류] {e}")
         traceback.print_exc()
@@ -99,7 +121,7 @@ try:
     print("시스템 준비 중...")
 
     # --- 시작 시 0도 위치로 이동 ---
-    move_motor_to(MOTOR_HOME_ANGLE, 20)
+    move_motor_to(MOTOR_HOME_ANGLE, 50)
     time.sleep(1)
     motor_correction()
     print("모터 초기 위치 보정 완료. 힘센서를 눌러 카메라를 켜세요.")
@@ -188,4 +210,5 @@ finally:
     except:
         pass
     print("정상 종료 완료.")
+
 
