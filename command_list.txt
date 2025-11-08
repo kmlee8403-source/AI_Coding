@@ -98,6 +98,7 @@ python3 examples/classify_image.py \
 --labels test_data/inat_bird_labels.txt \
 --input test_data/parrot.jpg
 
+
 모터 테스트 (각도 최소단위 5도)
 ------------------
 from buildhat import Motor
@@ -176,5 +177,6 @@ https://winscp.net/download/WinSCP-6.5.4-Setup.exe/download
 3. Edge TPU 모델 다운로드
 
 https://drive.google.com/file/d/1a5JV1SFAGEzS6SwLROU4UefHGxOFIAev/view?usp=sharing
+
 
 
