@@ -1,0 +1,176 @@
+SD Card 안에 있는 파일 복사
+
+
+
+1. 다운로드 Rasberry pi OS (Legacy, 32bit) bullseye Standard 버전 설치 (Coral 호환성 및 교육과정 중 안정성 중시)
+링크 - https://downloads.raspberrypi.org/raspios_oldstable_armhf/images/raspios_oldstable_armhf-2023-10-10/
+2023-05-03-raspios-bullseye-armhf.img.xz 파일 다운로드
+
+2. Raspberry Pi Imager 다운로드
+https://www.raspberrypi.com/software/
+
+3. putty 다운로드
+https://www.chiark.greenend.org.uk/~sgtatham/putty/latest.html
+
+4. 라즈베리파이 업데이트
+ 1) sudo apt update
+ 2) sudo apt install -y fcitx fcitx-hangul fonts-nanum fonts-unfonts-core fonts-noto-cjk
+ 3) sudo apt upgrade -y
+ 4) sudo raspi-config
+     ㄴ 5. Localization Options -> I1 Locale -> ko_KR.UTH-8 UTF-8 ->Ok -> ko_KR.UTF-8 선택 enter
+재부팅 되면 다시 접속 한 뒤
+ 5) sudo raspi-config
+     ㄴ 3. Interface Options -> I3 VNC <Yes>로 변경 후 Finish -> sudo reboot 
+재부팅 되면 다시 접속 한 뒤
+ 6) sudo raspi-config
+     ㄴ 3. Interface Options -> I6 Serial  1번 No.  2번 Yes로 변경 후 Finish -> sudo reboot
+
+5. Real VNC Viewer 다운로드
+https://www.realvnc.com/en/connect/download/viewer/?lai_vid=99Kp4Wb4mIjpb&lai_sr=5-9&lai_sl=l&lai_p=1&lai_na=513210
+
+6. VNC 접속
+7. 상단 키보드 버튼 우측 마우스 -> 설정-> 입력기 설정 -> Hangul & 키보드 -영어 -> 전역설정 /입력기변환 -> 한/영 키 클릭
+
+8. 카메라 테스트
+ libcamera-hello
+
+9. 카메라 파이썬 라이브러리(모듈) 설치 (생략)
+sudo apt install -y python3-picamera2
+
+10. 이미지 및 동영상 처리 파이썬 라이브러리(모듈) 설치 (생략)
+sudo apt install -y python3-opencv
+
+11. build HAT 파이썬 라이브러리(모듈) 설치
+sudo pip3 install buildhat
+
+12. 디바이스 검증 (정상연결 확인)
+ls -l /dev/serial*
+
+13. 모터 테스트 코드 작성
+nano motor_test.py
+
+코드 ---------------------------------------------
+from buildhat import Motor
+import time
+
+motor_a = Motor('A')
+
+print("Motor running forward for 5 seconds...")
+motor_a.run_for_seconds(5)
+
+time.sleep(1)
+
+print("Motor running backward for 3 seconds...")
+motor_a.run_for_seconds(3, speed=-100)
+
+print("Test complete!")
+-----------------------------------------------------
+
+14. 모터 테스트 코드 실행
+python3 motor_test.py
+
+15. Coral TPU를 사용하기 위한 시스템에 Debian 패키지 저장소 추가 및 Edge TPU 런타임 설치
+echo "deb https://packages.cloud.google.com/apt coral-edgetpu-stable main" | sudo tee /etc/apt/sources.list.d/coral-edgetpu.list
+curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+sudo apt-get update
+sudo apt-get install libedgetpu1-std
+
+16. PyCoral 라이브러리(모듈) 설치
+sudo apt-get install python3-pycoral
+
+17. Coral TPU 연결 (USB 3.0)
+
+18. Edge TPU에서 모델 실행 
+1) Github에서 예제코드를 다운로드
+mkdir coral && cd coral
+git clone https://github.com/google-coral/pycoral.git
+cd pycoral
+
+2) 모델, 라벨, 새 사진 다운로드
+bash examples/install_requirements.sh classify_image.py
+
+3) 새 사진으로 이미지 분류기를 실행
+python3 examples/classify_image.py \
+--model test_data/mobilenet_v2_1.0_224_inat_bird_quant_edgetpu.tflite \
+--labels test_data/inat_bird_labels.txt \
+--input test_data/parrot.jpg
+
+모터 테스트 (각도 최소단위 5도)
+------------------
+from buildhat import Motor
+import time
+
+motor = Motor('A')
+
+1. print("5초 동안 정방향 회전")
+motor.run_for_seconds(5, speed=30)   
+
+2. print("3초 동안 역방향 회전")
+motor.run_for_seconds(3, speed=-75)
+
+3. print("90도 방향 회전")
+motor.run_for_degrees(90, speed=10)
+
+4. print("180도 방향 회전")
+motor.run_for_degrees(180, speed=-10)
+
+5. print("2바퀴 회전")
+motor.run_for_rotations(2, speed=50)
+
+6. print("역방향 1바퀴 회전")
+motor.run_for_rotations(1, speed=-10)
+---------------------------------------------
+정확하게 각도 맞추는 코드
+
+import time
+from buildhat import Motor
+
+# Motor setup
+motor = Motor('A')
+
+# 목표 절대 위치 (-180 ~ 180)
+target_position = 90  # 예: 90도 위치
+
+# 속도 설정 (0~100)
+speed = 50
+
+# 허용 오차 (degree)
+tolerance = 2  # 목표 위치 ±2도 범위 내이면 정지
+
+print(f"모터를 절대 위치 {target_position}도로 이동시킵니다.")
+
+# 반복 보정
+while True:
+    current_pos = motor.get_aposition()
+    error = target_position - current_pos
+    
+    # 목표 위치 근처면 멈춤
+    if abs(error) <= tolerance:
+        motor.stop()
+        print(f"목표 위치 도달 (현재: {current_pos}도, 허용 오차 ±{tolerance})")
+        break
+    
+    # 목표 위치까지 이동
+    motor.run_to_position(degrees=target_position, speed=speed, blocking=True)
+    
+    # 짧게 대기 후 다시 위치 확인
+    time.sleep(0.1)
+------------------------------------------------------------------------------------------
+
+거리센서 테스트
+힘센서 테스트
+
+1.  티처블 머신 사이트
+
+https://teachablemachine.withgoogle.com/
+
+2. WinSCP
+
+https://winscp.net/download/WinSCP-6.5.4-Setup.exe/download
+
+압축 푼 모델 파일 전송
+
+3. Edge TPU 모델 다운로드
+
+https://drive.google.com/file/d/1a5JV1SFAGEzS6SwLROU4UefHGxOFIAev/view?usp=sharing
+
