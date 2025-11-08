@@ -32,7 +32,10 @@ https://www.realvnc.com/en/connect/download/viewer/?lai_vid=99Kp4Wb4mIjpb&lai_sr
 7. 상단 키보드 버튼 우측 마우스 -> 설정-> 입력기 설정 -> Hangul & 키보드 -영어 -> 전역설정 /입력기변환 -> 한/영 키 클릭
 
 8. 카메라 테스트
- libcamera-hello
+libcamera-hello
+
+8-1. 키보드 라이브러리 설치
+sudo pip3 install keyboard
 
 9. 카메라 파이썬 라이브러리(모듈) 설치 (생략)
 sudo apt install -y python3-picamera2
@@ -173,4 +176,5 @@ https://winscp.net/download/WinSCP-6.5.4-Setup.exe/download
 3. Edge TPU 모델 다운로드
 
 https://drive.google.com/file/d/1a5JV1SFAGEzS6SwLROU4UefHGxOFIAev/view?usp=sharing
+
 
