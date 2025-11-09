@@ -18,11 +18,11 @@ ANGLE_TOLERANCE = 2
 # =========================
 # 초기화
 # =========================
-motorA = Motor('A')  # 정방향 모터
+motorA = Motor('A')  
 force = ForceSensor('C')
 dist_sensor = DistanceSensor('D')
 
-# 엔코더 초기 위치 설정 (부팅 시 기준점 0도)
+# 엔코더 초기 위치 설정
 motorA.run_to_position(0, 50)
 
 interpreter = make_interpreter(MODEL_PATH)
@@ -43,7 +43,7 @@ potential_label = None
 potential_label_start_time = 0
 camera_active = False
 current_angle = MOTOR_HOME_ANGLE
-motor_lock = threading.Lock()  # 모터 동시 명령 방지용 Lock
+motor_lock = threading.Lock()
 
 # =========================
 # 모터 제어 함수 (절대 위치 기반)
@@ -53,15 +53,15 @@ def move_motor_to(target_angle, speed=20):
     global current_angle
     try:
         current_angle_A = motorA.get_aposition()
+        diff = target_angle - current_angle_A
 
-        diff_A = target_angle - current_angle_A
-
-        if abs(diff_A) <= ANGLE_TOLERANCE
+        if abs(diff) <= ANGLE_TOLERANCE:
             return
 
         with motor_lock:
             motorA.run_to_position(target_angle, speed)
-           
+            current_angle = target_angle
+
         if abs(current_angle - MOTOR_HOME_ANGLE) <= ANGLE_TOLERANCE:
             print("문 닫힘 (0도)")
         elif abs(current_angle - MOTOR_OPEN_ANGLE) <= ANGLE_TOLERANCE:
@@ -75,17 +75,14 @@ def motor_correction():
     """모터 절대 위치 보정"""
     try:
         with motor_lock:
-            posA_before = motorA.get_aposition()
+            pos_before = motorA.get_aposition()
 
-            # 오차가 있으면 보정
-            if abs(posA_before - current_angle) > ANGLE_TOLERANCE:
+            if abs(pos_before - current_angle) > ANGLE_TOLERANCE:
                 motorA.run_to_position(current_angle, 20)
 
-            # 보정 후 다시 읽기
             time.sleep(0.5)
-            posA_after = motorA.get_aposition()
-
-            print(f"보정 완료 (A:{posA_before:.1f}° → {posA_after:.1f}° 
+            pos_after = motorA.get_aposition()
+            print(f"보정 완료 (A:{pos_before:.1f}° → {pos_after:.1f}°)")
 
     except Exception as e:
         print(f"[보정 오류] {e}")
@@ -184,18 +181,4 @@ try:
                 print("프로그램 종료 요청")
                 break
 
-        time.sleep(0.1)
-
-except KeyboardInterrupt:
-    print("사용자 중단")
-
-finally:
-    try:
-        motorA.stop()
-        picam2.stop()
-        cv2.destroyAllWindows()
-    except:
-        pass
-    print("정상 종료 완료.")
-
-
+        time.sleep(0
